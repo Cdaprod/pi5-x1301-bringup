@@ -11,14 +11,22 @@ need media-ctl; need v4l2-ctl; need awk
 load=0
 case "${1:-}" in "") ;; --load-edid) load=1 ;; -h|--help) sed -n '2,4p' "$0"; exit 0 ;; *) echo "ERROR: unknown option: $1" >&2; exit 1;; esac
 MEDIA="$(find_rp1_cfe_media)" || { echo "ERROR: RP1 CFE graph containing TC358743 not found" >&2; exit 2; }
-GRAPH="$(media-ctl -d "$MEDIA" -p)"
 SUBDEV="$(find_tc358743_subdev "$MEDIA")" || { echo "ERROR: TC358743 entity has no subdevice" >&2; exit 3; }
 if (( load )); then "$DIR/load-edid.sh"; fi
 TIMINGS="$(query_dv_timings "$SUBDEV")" || { echo "$TIMINGS" >&2; echo "ERROR: HDMI has no valid timings" >&2; exit 4; }
 WIDTH="$(parse_active_width "$TIMINGS")"; HEIGHT="$(parse_active_height "$TIMINGS")"
 [[ $WIDTH =~ ^[1-9][0-9]*$ && $HEIGHT =~ ^[1-9][0-9]*$ ]] || { echo "ERROR: invalid active dimensions" >&2; exit 6; }
-VIDEO="$(find_entity_node "$GRAPH" 'rp1-cfe-csi2_ch0')"
-[[ -n "$VIDEO" ]] || { echo "ERROR: capture entity not found in owning graph" >&2; exit 7; }
+VIDEO="$(find_rp1_cfe_capture_node "$MEDIA")"
+if [[ -z "$VIDEO" ]]; then
+  echo "WARNING: rp1-cfe-csi2_ch0 has no device node; probing capture candidates" >&2
+  while IFS= read -r candidate; do
+    if v4l2-ctl -d "$candidate" --set-fmt-video="width=$WIDTH,height=$HEIGHT,pixelformat=RGB3" >/dev/null 2>&1; then
+      VIDEO="$candidate"
+      break
+    fi
+  done < <(find_capture_candidates)
+fi
+[[ -n "$VIDEO" ]] || { echo "ERROR: no usable capture node found" >&2; exit 7; }
 
 v4l2-ctl -d "$SUBDEV" --set-dv-bt-timings=query
 media-ctl -d "$MEDIA" -r

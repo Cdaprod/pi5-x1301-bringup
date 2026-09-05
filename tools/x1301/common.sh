@@ -60,6 +60,16 @@ get_control_value() {
 query_dv_timings() { v4l2-ctl -d "$1" --query-dv-timings 2>&1; }
 parse_active_width() { awk -F: '/Active width:/ { gsub(/[^0-9]/, "", $2); print $2; exit }' <<<"$1"; }
 parse_active_height() { awk -F: '/Active height:/ { gsub(/[^0-9]/, "", $2); print $2; exit }' <<<"$1"; }
+parse_frame_rate() {
+  sed -nE 's/.*\(([0-9]+([.][0-9]+)?) frames per second\).*/\1/p' <<<"$1"
+}
+
+# Resolve the primary raw capture node from the selected media graph.
+find_rp1_cfe_capture_node() {
+  local media="$1" graph
+  graph="$(media-ctl -d "$media" -p 2>/dev/null)" || return 1
+  find_entity_node "$graph" 'rp1-cfe-csi2_ch0'
+}
 
 find_capture_candidates() {
   local d info
