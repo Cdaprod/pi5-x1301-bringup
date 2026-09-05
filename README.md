@@ -38,4 +38,4 @@ If automatic discovery is ambiguous, it stops and prints the candidates rather t
 
 ## EVF direction
 
-Once `capture-test.sh` succeeds, use the detected capture node as the source for the separate ST7735 EVF application.
+Once `capture-test.sh` succeeds, use the detected capture node as the source for the [separate ST7735 EVF application](https://github.com/Cdaprod/pi5-st7735-evf.git).
