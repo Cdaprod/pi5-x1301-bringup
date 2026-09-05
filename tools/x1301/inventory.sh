@@ -32,10 +32,10 @@ for d in /dev/v4l-subdev*; do
   v4l2-ctl -d "$d" --all || true
 done
 section "AUTO-DETECTION"
-echo "TC358743 subdevices:"
-find_tc_subdevs || true
-echo "Relevant media devices:"
-find_tc_media || true
+echo "RP1 CFE media device:"
+find_rp1_cfe_media || true
+echo "TC358743 subdevice from owning entity:"
+find_tc358743_subdev || true
 echo "Capture candidates:"
 find_capture_candidates || true
 section "RESULT"

@@ -1,41 +1,34 @@
 # Pi 5 X1301 Bring-up
 
-Conservative, log-first bring-up tooling for a Raspberry Pi 5 with the Geekworm X1301 / TC358743 HDMI-to-CSI-2 stack.
+Device-discovering tools for the Geekworm X1301 / TC358743 on Raspberry Pi 5. Install dependencies with `sudo apt install v4l-utils media-ctl ffmpeg edid-decode`.
 
-This repo is designed for an already-developed Pi: it inventories existing V4L2/media devices before making assumptions about `/dev/videoN`, `/dev/mediaN`, or `/dev/v4l-subdevN`.
+## Overlay (independent, one-time stage)
 
-## Quick start
+Run `sudo make overlay`, then reboot only when requested. The supported CAM/DISP0 configuration is:
 
-```bash
-sudo apt update
-sudo apt install -y v4l-utils media-ctl ffmpeg
-git clone <your-repo-url>
-cd pi5-x1301-bringup
-
-# Phase 1: non-destructive inventory
-./tools/x1301/inventory.sh
-
-# Phase 2: install boot overlays if missing.
-# Reboot only if the script says it changed config.txt.
-sudo ./tools/x1301/install-overlay.sh
-
-# After reboot, configure HDMI capture.
-sudo ./tools/x1301/configure.sh
-
-# Test a short raw capture.
-sudo ./tools/x1301/capture-test.sh
+```ini
+dtoverlay=tc358743,cam0
+dtoverlay=tc358743-audio
 ```
 
-All scripts tee their output into `logs/`.
+The installer removes incompatible TC358743 CAM1/`4lane=1` lines. No other Make target invokes `overlay` transitively.
 
-## Important
+## Detection and operation stages
 
-The scripts intentionally discover device nodes rather than assuming Geekworm's example node numbers. Existing `/dev/video19` or other prior V4L2 devices are not modified merely because they exist.
+Each stage is separate: `make inventory` enumerates kernel devices; `make status` discovers the RP1 CFE graph, resolves the TC358743 node from its owning media entity, reads HDMI power, and checks timing lock; `make edid-info` decodes the bundled EDID without touching hardware; `sudo make load-edid` explicitly programs it; and `sudo make configure` applies the **already active** timing to the CFE route. Normal configuration never rewrites EDID.
 
-`configure.sh` detects a TC358743 subdevice and its associated media graph, loads the supplied 1080p60 EDID, queries DV timings, configures the CSI2 link, and locates a likely capture node.
+The file `tools/x1301/edid/x1301-compatible.txt` is one EDID that advertises multiple source modes (including 1080p and lower modes); its name does not imply one fixed timing. The old `tools/x1301/1080P60EDID.txt` path remains as a compatibility symlink.
 
-If automatic discovery is ambiguous, it stops and prints the candidates rather than guessing.
+```bash
+make inventory
+make status
+make edid-info
+sudo make load-edid       # only when EDID programming is intended
+sudo make configure       # or: configure.sh --load-edid
+sudo make capture
+make watch                # transitions only
+sudo ./tools/x1301/hdmi-watch.sh --configure
+make test
+```
 
-## EVF direction
-
-Once `capture-test.sh` succeeds, use the detected capture node as the source for the [separate ST7735 EVF application](https://github.com/Cdaprod/pi5-st7735-evf.git).
+`power_present=1` establishes cable/source presence, not timing lock. Status reports `NO_SIGNAL` until valid DV timings exist. Configuration writes `logs/last-mode.env` and `logs/last-video-node.txt`; capture consumes the node and active dimensions from the environment file.
