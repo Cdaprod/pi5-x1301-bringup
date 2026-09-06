@@ -1,0 +1,3 @@
+driver rp1-cfe
+- entity 1: csi2 (8 pads, 8 links)
+    device node name /dev/v4l-subdev0

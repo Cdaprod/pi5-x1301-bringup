@@ -1,0 +1,1 @@
+VIDIOC_QUERY_DV_TIMINGS: failed: Link has been severed

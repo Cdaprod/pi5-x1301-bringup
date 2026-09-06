@@ -1,0 +1,3 @@
+power_present: 1
+audio_present: 0
+audio_sampling_rate: 0

@@ -1,0 +1,3 @@
+Active width: 640
+Active height: 480
+Pixelclock: 25175000 Hz (59.94 frames per second)

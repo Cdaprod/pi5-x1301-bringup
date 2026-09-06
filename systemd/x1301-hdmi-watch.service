@@ -1,0 +1,13 @@
+[Unit]
+Description=X1301 HDMI timing watcher
+After=multi-user.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/pi5-x1301-bringup
+ExecStart=/opt/pi5-x1301-bringup/tools/x1301/hdmi-watch.sh --configure
+Restart=on-failure
+User=root
+
+[Install]
+WantedBy=multi-user.target

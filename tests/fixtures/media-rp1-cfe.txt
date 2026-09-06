@@ -1,0 +1,7 @@
+driver rp1-cfe
+- entity 1: csi2 (8 pads, 8 links)
+    device node name /dev/v4l-subdev0
+- entity 16: tc358743 10-000f (1 pad, 1 link)
+    device node name /dev/v4l-subdev2
+- entity 18: rp1-cfe-csi2_ch0 (1 pad, 1 link)
+    device node name /dev/video0

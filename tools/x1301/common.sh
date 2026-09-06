@@ -54,6 +54,11 @@ get_control_value() {
   local device="$1" control="$2" output
   output="$(v4l2-ctl -d "$device" --get-ctrl="$control" 2>/dev/null ||
             v4l2-ctl -d "$device" --all 2>/dev/null || true)"
+  parse_control_value "$output" "$control"
+}
+
+parse_control_value() {
+  local output="$1" control="$2"
   awk -v c="$control" '$0 ~ "^[[:space:]]*" c "[[:space:]]*:" { sub(/.*:[[:space:]]*/, ""); print $1; exit }' <<<"$output"
 }
 
@@ -63,6 +68,25 @@ parse_active_height() { awk -F: '/Active height:/ { gsub(/[^0-9]/, "", $2); prin
 parse_frame_rate() {
   sed -nE 's/.*\(([0-9]+([.][0-9]+)?) frames per second\).*/\1/p' <<<"$1"
 }
+
+# Only a successful live timing ioctl establishes LOCKED.
+classify_signal_state() {
+  local power="$1" timings_locked="$2"
+  if [[ "$timings_locked" == 1 ]]; then printf 'LOCKED\n'
+  elif [[ "$power" == 1 ]]; then printf 'PRESENT_NO_SIGNAL\n'
+  else printf 'DISCONNECTED\n'
+  fi
+}
+
+json_string() {
+  local value="$1"
+  value=${value//\\/\\\\}; value=${value//\"/\\\"}
+  value=${value//$'\n'/\\n}; value=${value//$'\r'/\\r}; value=${value//$'\t'/\\t}
+  printf '"%s"' "$value"
+}
+
+json_bool() { [[ "$1" == 1 ]] && printf true || printf false; }
+json_number_or_null() { [[ "$1" =~ ^[0-9]+([.][0-9]+)?$ ]] && printf '%s' "$1" || printf null; }
 
 # Resolve the primary raw capture node from the selected media graph.
 find_rp1_cfe_capture_node() {
