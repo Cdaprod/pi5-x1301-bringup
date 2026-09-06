@@ -1,5 +1,9 @@
 # X1301 task ledger
 
+- [x] Promote the watcher to a recoverable long-running process with atomic runtime state, transition-only structured logs, and configuration backoff.
+- [x] Install watcher runtime files at a stable system path with explicit install/enable/start/uninstall lifecycle controls.
+- [x] Add cached runtime status APIs, service documentation, administrative Make targets, and isolated service-transition tests.
+- [ ] Hardware-validate foreground rediscovery, configuration retry/backoff, clean shutdown, journald output, and boot service behavior.
 - [x] Treat disconnected and present-without-signal as successful diagnostic observations, while retaining nonzero exits for genuine status errors.
 - [x] Emit consistently indented status JSON with exactly one field per line and cover all observable states plus discovery failure.
 - [x] Add schema-versioned JSON status, concise/verbose diagnostics, robust transition watching, and configure dry-run/no-signal results.

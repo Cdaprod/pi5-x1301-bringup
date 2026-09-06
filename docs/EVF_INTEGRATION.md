@@ -1,6 +1,6 @@
 # EVF integration contract
 
-Consumers should run `tools/x1301/hdmi-status.sh --json` (schema `X1301_STATUS_SCHEMA=1`) rather than parse logs. `logs/last-mode.env` is a configuration snapshot fallback. JSON fields include `signal_state`, `width`, `height`, `fps`, `video`, `media`, and `subdev` (the node equivalents of `video_node`, `media_node`, and `subdev_node`).
+Two schema-versioned APIs are available. `tools/x1301/hdmi-status.sh --json` performs a live direct hardware query. `tools/x1301/runtime-status.sh --json` cheaply reads the watcher's last atomic state and should normally be used when the service is active. `logs/last-mode.env` is only a configuration snapshot fallback. Fields include `signal_state`, `width`, `height`, `fps`, `video`, `media`, and `subdev`.
 
 Events are `DISCONNECTED`, `PRESENT_NO_SIGNAL`, `LOCKED`, `MODE_CHANGE`, and `ERROR`. Only a successful live `--query-dv-timings` is locked. These events can drive the ST7735 UI, DSI UI, LEDs, buttons, encoder, service, or watchdog.
 

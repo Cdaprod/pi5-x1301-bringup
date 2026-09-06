@@ -49,4 +49,4 @@ The current confirmed example is Debian GNU/Linux 12 (bookworm), kernel `6.12.96
 
 `systemd/x1301-hdmi-watch.service` is not installed or enabled automatically. After hardware validation, install it with `sudo tools/x1301/install-service.sh`; pass `--enable` only deliberately. The watcher never loads EDID. Boot configuration is changed only by the separate explicit `install-overlay.sh` administrative tool.
 
-See [pipeline architecture](docs/PIPELINE.md), [troubleshooting](docs/TROUBLESHOOTING.md), [EVF integration](docs/EVF_INTEGRATION.md), and [EDID notes](tools/x1301/edid/README.md).
+See [service lifecycle](docs/SERVICE.md), [pipeline architecture](docs/PIPELINE.md), [troubleshooting](docs/TROUBLESHOOTING.md), [EVF integration](docs/EVF_INTEGRATION.md), and [EDID notes](tools/x1301/edid/README.md).
