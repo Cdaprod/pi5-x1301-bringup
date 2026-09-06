@@ -1,77 +1,81 @@
 #!/usr/bin/env bash
-# Continuously watch HDMI state. Usage: hdmi-watch.sh [--interval SEC] [--configure] [--json] [--once]
+# Publish and maintain the X1301 HDMI lifecycle. Usage: hdmi-watch.sh [--interval SEC] [--configure] [--json] [--once]
 # Example: sudo ./tools/x1301/hdmi-watch.sh --interval 1 --configure
 set -uo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"; source "$DIR/common.sh"
 interval=1; configure=0; json=0; once=0; configure_backoff="${X1301_CONFIGURE_BACKOFF:-10}"
-while (($#)); do
-  case "$1" in
-    --interval) (($# >= 2)) || { echo 'ERROR: --interval requires seconds' >&2; exit 1; }; interval=$2; shift ;;
-    --configure) configure=1 ;; --json) json=1 ;; --once) once=1 ;;
-    -h|--help) sed -n '2,3p' "$0"; exit 0 ;; *) echo "ERROR: unknown option: $1" >&2; exit 1 ;;
-  esac; shift
-done
+while (($#)); do case "$1" in
+  --interval) (($# >= 2)) || { echo 'ERROR: --interval requires seconds' >&2; exit 1; }; interval=$2; shift;;
+  --configure) configure=1;; --json) json=1;; --once) once=1;;
+  -h|--help) sed -n '2,3p' "$0"; exit 0;; *) echo "ERROR: unknown option: $1" >&2; exit 1;;
+esac; shift; done
 [[ $interval =~ ^[0-9]+([.][0-9]+)?$ ]] || { echo 'ERROR: interval must be numeric' >&2; exit 1; }
 [[ $configure_backoff =~ ^[0-9]+$ ]] || { echo 'ERROR: configure backoff must be an integer' >&2; exit 1; }
 need media-ctl || exit 1; need v4l2-ctl || exit 1
-
 choose_state_file() {
   if [[ -n ${X1301_RUNTIME_STATE:-} ]]; then printf '%s\n' "$X1301_RUNTIME_STATE"
   elif [[ -d /run/x1301 && -w /run/x1301 ]] || mkdir -p /run/x1301 2>/dev/null; then printf '/run/x1301/state.env\n'
-  else printf '%s/runtime-state.env\n' "$LOG_DIR"
-  fi
+  else printf '%s/runtime-state.env\n' "$LOG_DIR"; fi
 }
+state_safe() { local v="$1"; v=${v//$'\n'/ }; v=${v//\'/}; printf '%s' "$v"; }
 write_state() {
-  local file="$1" signal="$2" media="$3" subdev="$4" video="$5" width="$6" height="$7" fps="$8" configured="$9" changed="${10}"
-  local tmp="${file}.tmp.$$"; mkdir -p "$(dirname "$file")"
-  umask 022
-  printf "X1301_STATUS_SCHEMA=1\nX1301_SIGNAL_STATE='%s'\nX1301_MEDIA='%s'\nX1301_SUBDEV='%s'\nX1301_VIDEO='%s'\nX1301_WIDTH='%s'\nX1301_HEIGHT='%s'\nX1301_FPS='%s'\nX1301_CONFIGURED='%s'\nX1301_LAST_CHANGE='%s'\n" \
-    "$signal" "$media" "$subdev" "$video" "$width" "$height" "$fps" "$configured" "$changed" >"$tmp"
+  local file="$1" tmp="${1}.tmp.$$"
+  mkdir -p "$(dirname "$file")"; umask 022
+  {
+    printf 'X1301_STATUS_SCHEMA=1\n'
+    for key in SIGNAL_STATE MEDIA SUBDEV VIDEO WIDTH HEIGHT FPS CONFIGURED LAST_CHANGE POWER_PRESENT TIMINGS_LOCKED AUDIO_PRESENT AUDIO_SAMPLING_RATE PIXELCLOCK_HZ PIXELFORMAT MODE_ID MODE_GENERATION DRIVER RP1_CFE_DETECTED ERROR; do
+      eval "value=\${$key:-}"; printf "X1301_%s='%s'\n" "$key" "$(state_safe "$value")"
+    done
+  } >"$tmp"
   mv -f "$tmp" "$file"
 }
 emit_event() {
-  local event="$1" signal="$2" old_mode="$3" mode="$4" width="$5" height="$6" fps="$7"
+  local event="$1"
   if ((json)); then
-    printf '{"X1301_STATUS_SCHEMA":1,"event":%s,"signal_state":%s,"old_mode":%s,"mode":%s,"width":%s,"height":%s,"fps":%s}\n' \
-      "$(json_string "$event")" "$(json_string "$signal")" "$(json_string "$old_mode")" "$(json_string "$mode")" "$(json_number_or_null "$width")" "$(json_number_or_null "$height")" "$(json_number_or_null "$fps")"
-  elif [[ $event == MODE_CHANGE ]]; then printf 'X1301 EVENT MODE_CHANGE old=%s new=%s\n' "$old_mode" "$mode"
-  elif [[ $event == LOCKED ]]; then printf 'X1301 EVENT LOCKED width=%s height=%s fps=%s\n' "$width" "$height" "${fps:-unknown}"
-  else printf 'X1301 EVENT %s\n' "$event"
-  fi
+    printf '{"X1301_STATUS_SCHEMA":1,"event":%s,"signal_state":%s,"mode_id":%s,"mode_generation":%s,"media":%s,"subdev":%s,"video":%s,"width":%s,"height":%s,"fps":%s,"pixelclock_hz":%s,"configured":%s,"error":%s}\n' \
+      "$(json_string "$event")" "$(json_string "$SIGNAL_STATE")" "$(json_string "$MODE_ID")" "$MODE_GENERATION" "$(json_string "$MEDIA")" "$(json_string "$SUBDEV")" "$(json_string "$VIDEO")" "$(json_number_or_null "$WIDTH")" "$(json_number_or_null "$HEIGHT")" "$(json_number_or_null "$FPS")" "$(json_number_or_null "$PIXELCLOCK_HZ")" "$(json_bool "$CONFIGURED")" "$(json_string "$ERROR")"
+  else printf 'X1301 EVENT %s mode=%s generation=%s configured=%s%s\n' "$event" "${MODE_ID:-none}" "$MODE_GENERATION" "$CONFIGURED" "${ERROR:+ error=$ERROR}"; fi
 }
-
 STATE_FILE="$(choose_state_file)"; CONFIGURE_COMMAND="${X1301_CONFIGURE_COMMAND:-$DIR/configure.sh}"
-running=1; sleep_pid=""; previous_state=""; previous_mode=""; configured=0; last_change="$(date -Is)"; next_retry=0; polls=0
+running=1; sleep_pid=""; previous_observed=""; previous_identity=""; configured_identity=""; LAST_CHANGE="$(date -Is)"; MODE_GENERATION=0; next_retry=0; polls=0
 trap 'running=0; [[ -n $sleep_pid ]] && kill "$sleep_pid" 2>/dev/null || true' INT TERM
 while ((running)); do
-  state=ERROR; media=""; subdev=""; video=""; width=""; height=""; fps=""; mode=""; locked=0; power=""
-  if media="$(find_rp1_cfe_media)" && subdev="$(find_tc358743_subdev "$media")"; then
-    video="$(find_rp1_cfe_capture_node "$media")"; power="$(get_control_value "$subdev" power_present)"
-    if [[ $power == 0 || $power == 1 ]]; then
-      if timings="$(query_dv_timings "$subdev")"; then
-        width="$(parse_active_width "$timings")"; height="$(parse_active_height "$timings")"; fps="$(parse_frame_rate "$timings")"
-        [[ $width =~ ^[1-9][0-9]*$ && $height =~ ^[1-9][0-9]*$ ]] && locked=1
+  SIGNAL_STATE=ERROR; MEDIA=""; SUBDEV=""; VIDEO=""; WIDTH=""; HEIGHT=""; FPS=""; PIXELCLOCK_HZ=""; PIXELFORMAT=RGB3; MODE_ID=""; CONFIGURED=0
+  POWER_PRESENT=0; TIMINGS_LOCKED=0; AUDIO_PRESENT=0; AUDIO_SAMPLING_RATE=""; DRIVER=""; RP1_CFE_DETECTED=0; ERROR='RP1 CFE/TC358743 media graph not found'
+  if MEDIA="$(find_rp1_cfe_media)" && SUBDEV="$(find_tc358743_subdev "$MEDIA")"; then
+    RP1_CFE_DETECTED=1; DRIVER=rp1-cfe; VIDEO="$(find_rp1_cfe_capture_node "$MEDIA")"
+    POWER_PRESENT="$(get_control_value "$SUBDEV" power_present)"; AUDIO_PRESENT="$(get_control_value "$SUBDEV" audio_present)"; AUDIO_SAMPLING_RATE="$(get_control_value "$SUBDEV" audio_sampling_rate)"
+    ERROR=""
+    if [[ $POWER_PRESENT == 0 || $POWER_PRESENT == 1 ]]; then
+      if timings="$(query_dv_timings "$SUBDEV")"; then
+        WIDTH="$(parse_active_width "$timings")"; HEIGHT="$(parse_active_height "$timings")"; FPS="$(parse_frame_rate "$timings")"; PIXELCLOCK_HZ="$(parse_pixelclock "$timings")"
+        if [[ $WIDTH =~ ^[1-9][0-9]*$ && $HEIGHT =~ ^[1-9][0-9]*$ && $PIXELCLOCK_HZ =~ ^[1-9][0-9]*$ ]]; then TIMINGS_LOCKED=1
+        else ERROR='Malformed live DV timings'; fi
       fi
-      state="$(classify_signal_state "$power" "$locked")"
-    fi
+      SIGNAL_STATE="$(classify_signal_state "$POWER_PRESENT" "$TIMINGS_LOCKED")"
+    else SIGNAL_STATE=ERROR; ERROR='Malformed power_present control'; fi
   fi
-  ((locked)) && mode="${width}x${height}"
-  event="$state"; [[ $state == LOCKED && $previous_state == LOCKED && $mode != "$previous_mode" ]] && event=MODE_CHANGE
-  transition=0; [[ $state != "$previous_state" || $event == MODE_CHANGE ]] && transition=1
-  if ((transition)); then
-    last_change="$(date -Is)"; [[ $event != LOCKED && $event != MODE_CHANGE ]] && configured=0
-    emit_event "$event" "$state" "$previous_mode" "$mode" "$width" "$height" "$fps"
+  observed_signal="$SIGNAL_STATE"
+  ((TIMINGS_LOCKED)) && MODE_ID="${WIDTH}x${HEIGHT}@${FPS:-unknown}/${PIXELCLOCK_HZ}Hz/${PIXELFORMAT}"
+  identity="$MEDIA|$SUBDEV|$VIDEO|$MODE_ID"; changed=0
+  [[ $observed_signal != "$previous_observed" || $identity != "$previous_identity" ]] && changed=1
+  if ((changed)); then
+    LAST_CHANGE="$(date -Is)"; configured_identity=""; next_retry=0
+    if [[ $SIGNAL_STATE == LOCKED ]]; then SIGNAL_STATE=MODE_CHANGE; MODE_GENERATION=$((MODE_GENERATION + 1)); fi
+    emit_event "$SIGNAL_STATE"; write_state "$STATE_FILE"
   fi
   now=$(date +%s)
-  if ((configure)) && [[ $state == LOCKED ]] && { ((transition)) || { ((configured == 0)) && ((now >= next_retry)); }; }; then
-    printf 'X1301 CONFIGURE START\n'
-    if "$CONFIGURE_COMMAND"; then configured=1; next_retry=0; printf 'X1301 CONFIGURE OK\n'
-    else rc=$?; configured=0; next_retry=$((now + configure_backoff)); printf 'X1301 CONFIGURE FAILED exit=%s retry_after=%s\n' "$rc" "$configure_backoff" >&2
-    fi
+  if [[ $SIGNAL_STATE == MODE_CHANGE || $SIGNAL_STATE == LOCKED ]]; then
+    if [[ $configured_identity == "$identity" ]]; then CONFIGURED=1; SIGNAL_STATE=LOCKED
+    elif ((configure)) && ((now >= next_retry)); then
+      SIGNAL_STATE=MODE_CHANGE; CONFIGURED=0; write_state "$STATE_FILE"; printf 'X1301 CONFIGURE START mode=%s\n' "$MODE_ID"
+      if "$CONFIGURE_COMMAND"; then configured_identity="$identity"; CONFIGURED=1; SIGNAL_STATE=LOCKED; ERROR=""; next_retry=0; printf 'X1301 CONFIGURE OK\n'
+      else rc=$?; ERROR="configuration failed (exit $rc)"; next_retry=$((now + configure_backoff)); printf 'X1301 CONFIGURE FAILED exit=%s retry_after=%s\n' "$rc" "$configure_backoff" >&2
+      fi
+    else SIGNAL_STATE=MODE_CHANGE; fi
   fi
-  write_state "$STATE_FILE" "$state" "$media" "$subdev" "$video" "$width" "$height" "$fps" "$configured" "$last_change"
-  previous_state="$state"; [[ -n $mode ]] && previous_mode="$mode"
+  write_state "$STATE_FILE"
+  previous_observed="$observed_signal"; previous_identity="$identity"
   polls=$((polls + 1)); ((once)) && break; [[ ${HDMI_WATCH_MAX_POLLS:-0} -gt 0 && $polls -ge ${HDMI_WATCH_MAX_POLLS} ]] && break
   sleep "$interval" & sleep_pid=$!; wait "$sleep_pid" || true; sleep_pid=""
 done
-exit 0

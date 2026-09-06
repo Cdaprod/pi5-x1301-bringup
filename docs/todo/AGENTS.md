@@ -1,5 +1,10 @@
 # X1301 task ledger
 
+- [x] Implement the ordered one-shot EDID boot initialization and production hot-plug watcher lifecycle.
+- [x] Publish full timing/node identity, configuration progress, hardware indicators, generation, and errors through atomic schema-1 state and JSON.
+- [x] Cover disconnected boot, late lock, reconnect, node renumbering, resolution/frame-rate changes, retry, atomic writes, unit ordering, and installer lifecycle without hardware.
+- [ ] Hardware-validate EDID boot loading and automatic 1080p60, 720p60, and 1080p30 source replacement on Raspberry Pi 5/X1301.
+- [ ] Hardware-validate node renumbering, configuration backoff recovery, audio fields, capture frames, reboot startup, and unplug/replug soak behavior.
 - [x] Promote the watcher to a recoverable long-running process with atomic runtime state, transition-only structured logs, and configuration backoff.
 - [x] Install watcher runtime files at a stable system path with explicit install/enable/start/uninstall lifecycle controls.
 - [x] Add cached runtime status APIs, service documentation, administrative Make targets, and isolated service-transition tests.

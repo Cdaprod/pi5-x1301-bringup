@@ -31,7 +31,7 @@ sudo ./tools/x1301/hdmi-watch.sh --configure
 make test
 ```
 
-`power_present=1` establishes cable/source presence, not timing lock. Status reports `NO_SIGNAL` until valid DV timings exist. Configuration writes `logs/last-mode.env` and `logs/last-video-node.txt`; capture consumes the node and active dimensions from the environment file.
+`power_present=1` establishes cable/source presence, not timing lock. Status reports `PRESENT_NO_SIGNAL` until valid DV timings exist. Configuration writes `logs/last-mode.env` and `logs/last-video-node.txt`; capture consumes the node and active dimensions from the environment file.
 
 `make status` reports `SIGNAL=PRESENT_NO_SIGNAL` and `DV_TIMINGS=NO_LINK` when power is present but the live timing ioctl fails; it never treats the driver's remembered `dv.current` mode as a lock. The `VIDEO` field is resolved from the `rp1-cfe-csi2_ch0` entity in the same media graph.
 
@@ -45,8 +45,16 @@ Only a successful `--query-dv-timings` establishes `LOCKED`; remembered `dv.curr
 
 The current confirmed example is Debian GNU/Linux 12 (bookworm), kernel `6.12.96+rpt-rpi-2712`, with `dtoverlay=tc358743,cam0` and `dtoverlay=tc358743-audio`. The latest inventory observed RP1 CFE `/dev/media3`, TC358743 `/dev/v4l-subdev2`, and primary capture `/dev/video0`; these are examples, never hardcoded assumptions. It observed `power_present=1`, `dv.query=no-link`, and remembered `dv.current=640x480p59`: the source was electrically present without a valid live timing lock.
 
-## Service and safety
+## Production hot-plug service
 
-`systemd/x1301-hdmi-watch.service` is not installed or enabled automatically. After hardware validation, install it with `sudo tools/x1301/install-service.sh`; pass `--enable` only deliberately. The watcher never loads EDID. Boot configuration is changed only by the separate explicit `install-overlay.sh` administrative tool.
+Install and activate the ordered EDID/watcher lifecycle with:
+
+```bash
+sudo tools/x1301/install-service.sh --enable --start
+```
+
+At boot, `x1301-edid.service` validates and loads the canonical EDID once after bounded device discovery. The watcher starts afterward and does not rewrite EDID. It handles disconnected boot, late connection, source replacement, full timing changes (including frame rate/pixel clock), node renumbering, and configuration retry without operator commands. Both services run normally with no source connected. Installed live and cached status APIs are `/usr/local/lib/x1301/hdmi-status.sh` and `/usr/local/lib/x1301/runtime-status.sh`.
+
+The atomic `/run/x1301/state.env` contract exposes power, timing lock, audio, full mode identity/generation, discovered graph nodes/driver, configuration readiness, and errors. No undocumented onboard LED GPIO is driven; onboard HDMI/video LEDs may be hardware-controlled.
 
 See [service lifecycle](docs/SERVICE.md), [pipeline architecture](docs/PIPELINE.md), [troubleshooting](docs/TROUBLESHOOTING.md), [EVF integration](docs/EVF_INTEGRATION.md), and [EDID notes](tools/x1301/edid/README.md).

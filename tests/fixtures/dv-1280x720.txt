@@ -1,0 +1,3 @@
+Active width: 1280
+Active height: 720
+Pixelclock: 74250000 Hz (60.00 frames per second)

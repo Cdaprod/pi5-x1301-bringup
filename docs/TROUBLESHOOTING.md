@@ -14,3 +14,8 @@ Always use discovered nodes. Never infer a live lock from `dv.current`.
 | H. Resolution changes | Source mode | `./tools/x1301/hdmi-watch.sh --once` | `LOCKED WIDTHxHEIGHT` | Previous configuration still matches |
 | I. Unplug/replug | Hot-plug | `./tools/x1301/hdmi-watch.sh` | Disconnect then lock transitions | Reconfiguration repeats continuously |
 | J. Nodes changed | Enumeration | `make status` | Current MEDIA/SUBDEV/VIDEO | Node numbers persist across reboot |
+
+
+## Managed lifecycle checks
+
+Use `systemctl status x1301-edid.service x1301-hdmi-watch.service` to verify one-time EDID initialization precedes the watcher. Use `/usr/local/lib/x1301/runtime-status.sh --json` to distinguish source power, timing lock, configuration progress, and the last error. `MODE_CHANGE` with `configured=false` is expected during setup or retry backoff; `LOCKED` with `configured=true` is ready. If discovery times out, inspect the overlay/I2C probe and restart both ordered stages with `sudo tools/x1301/install-service.sh --restart`. Mocked tests validate logic only and do not establish physical HDMI, audio, or capture operation.

@@ -65,6 +65,7 @@ parse_control_value() {
 query_dv_timings() { v4l2-ctl -d "$1" --query-dv-timings 2>&1; }
 parse_active_width() { awk -F: '/Active width:/ { gsub(/[^0-9]/, "", $2); print $2; exit }' <<<"$1"; }
 parse_active_height() { awk -F: '/Active height:/ { gsub(/[^0-9]/, "", $2); print $2; exit }' <<<"$1"; }
+parse_pixelclock() { awk -F: '/Pixelclock:|Pixel clock:/ { sub(/^[[:space:]]*/, "", $2); sub(/[^0-9].*/, "", $2); print $2; exit }' <<<"$1"; }
 parse_frame_rate() {
   sed -nE 's/.*\(([0-9]+([.][0-9]+)?) frames per second\).*/\1/p' <<<"$1"
 }

@@ -1,0 +1,3 @@
+Active width: 1920
+Active height: 1080
+Pixelclock: 74250000 Hz (30.00 frames per second)

@@ -35,6 +35,7 @@ test:
 	./tests/test-common.sh
 	./tests/test-status-parser.sh
 	./tests/test-watcher-service.sh
+	./tests/test-service-install.sh
 	./tests/x1301-shell-tests.sh
 clean-logs:
 	./tools/x1301/cleanup-logs.sh

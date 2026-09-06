@@ -1,0 +1,13 @@
+[Unit]
+Description=X1301 bundled EDID initialization
+After=local-fs.target systemd-udev-settle.service
+Before=x1301-hdmi-watch.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/usr/local/lib/x1301
+ExecStart=/usr/local/lib/x1301/edid-init.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
