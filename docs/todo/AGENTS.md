@@ -1,5 +1,7 @@
 # X1301 task ledger
 
+- [x] Treat disconnected and present-without-signal as successful diagnostic observations, while retaining nonzero exits for genuine status errors.
+- [x] Emit consistently indented status JSON with exactly one field per line and cover all observable states plus discovery failure.
 - [x] Add schema-versioned JSON status, concise/verbose diagnostics, robust transition watching, and configure dry-run/no-signal results.
 - [x] Add EDID validation/profile docs, capture preflight/frame tooling, source diagnostics, safe log cleanup, and explicit systemd installation.
 - [x] Document pipeline, troubleshooting, EVF events, semantic LEDs, physical controls, display abstraction, and known-good hardware observations.

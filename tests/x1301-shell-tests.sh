@@ -46,10 +46,10 @@ sample=$'Active width: 1366 pixels\nActive height: 768 lines'
 [[ $(parse_active_width "$sample") == 1366 && $(parse_active_height "$sample") == 768 ]]
 V4_STATE=locked1080 "$ROOT/tools/x1301/hdmi-status.sh" >"$TMP/status"
 grep -qx "VIDEO=$TMP/dev/video7" "$TMP/status"; grep -qx 'SIGNAL=LOCKED' "$TMP/status"; grep -qx 'ACTIVE_WIDTH=1920' "$TMP/status"; grep -qx 'FPS=59.94' "$TMP/status"
-set +e; V4_STATE=no_signal "$ROOT/tools/x1301/hdmi-status.sh" >"$TMP/status2"; rc=$?; set -e
-[[ $rc == 3 ]]; grep -qx 'POWER_PRESENT=1' "$TMP/status2"; grep -qx 'SIGNAL=PRESENT_NO_SIGNAL' "$TMP/status2"
-set +e; V4_STATE=disconnected "$ROOT/tools/x1301/hdmi-status.sh" >"$TMP/status3"; rc=$?; set -e
-[[ $rc == 3 ]]; grep -qx 'POWER_PRESENT=0' "$TMP/status3"; grep -qx 'SIGNAL=DISCONNECTED' "$TMP/status3"
+V4_STATE=no_signal "$ROOT/tools/x1301/hdmi-status.sh" >"$TMP/status2"
+grep -qx 'POWER_PRESENT=1' "$TMP/status2"; grep -qx 'SIGNAL=PRESENT_NO_SIGNAL' "$TMP/status2"
+V4_STATE=disconnected "$ROOT/tools/x1301/hdmi-status.sh" >"$TMP/status3"
+grep -qx 'POWER_PRESENT=0' "$TMP/status3"; grep -qx 'SIGNAL=DISCONNECTED' "$TMP/status3"
 printf '%s\n' disconnected no_signal locked1080 locked1080 locked720 >"$TMP/states"; echo 1 >"$TMP/count"
 V4_STATES="$TMP/states" V4_SEQUENCE_FILE="$TMP/count" HDMI_WATCH_MAX_POLLS=5 "$ROOT/tools/x1301/hdmi-watch.sh" >"$TMP/watch"
 diff -u <(printf 'DISCONNECTED\nPRESENT_NO_SIGNAL\nLOCKED 1920x1080\nMODE_CHANGE 1280x720\n') "$TMP/watch"
