@@ -36,43 +36,6 @@ media-ctl -d "$MEDIA" -r || exit 5
 media-ctl -d "$MEDIA" -l "'csi2':4 -> 'rp1-cfe-csi2_ch0':0 [1]" || exit 5
 for pad in 0 4; do media-ctl -d "$MEDIA" -V "'csi2':$pad [fmt:RGB888_1X24/${WIDTH}x${HEIGHT} field:none colorspace:srgb]" || exit 5; done
 v4l2-ctl -d "$VIDEO" --set-fmt-video="width=$WIDTH,height=$HEIGHT,pixelformat=RGB3" || exit 5
-
-# S_FMT succeeding does not prove that RP1-CFE can actually start the
-# configured media pipeline. v4l2-ctl can also return exit status 0 even
-# when VIDIOC_STREAMON itself fails, so validate delivery by byte count.
-STREAM_TEST="$(mktemp /tmp/x1301-stream.XXXXXX.raw)"
-STREAM_LOG="$(mktemp /tmp/x1301-stream.XXXXXX.log)"
-
-cleanup_stream_test() {
-  rm -f "$STREAM_TEST" "$STREAM_LOG"
-}
-trap cleanup_stream_test EXIT
-
-EXPECTED_BYTES=$((WIDTH * HEIGHT * 3))
-
-timeout 3s v4l2-ctl -d "$VIDEO" \
-  --stream-mmap=4 \
-  --stream-count=1 \
-  --stream-to="$STREAM_TEST" \
-  >"$STREAM_LOG" 2>&1 || true
-
-ACTUAL_BYTES="$(stat -c %s "$STREAM_TEST" 2>/dev/null || printf '0')"
-
-if [[ "$ACTUAL_BYTES" -ne "$EXPECTED_BYTES" ]]; then
-  echo "ERROR: RP1-CFE stream preflight failed" >&2
-  echo "VIDEO=$VIDEO" >&2
-  echo "EXPECTED_BYTES=$EXPECTED_BYTES" >&2
-  echo "ACTUAL_BYTES=$ACTUAL_BYTES" >&2
-  cat "$STREAM_LOG" >&2
-  exit 5
-fi
-
-echo "X1301_STREAM_PREFLIGHT=OK"
-echo "X1301_STREAM_BYTES=$ACTUAL_BYTES"
-
-cleanup_stream_test
-trap - EXIT
-
 printf '%s\n' "$VIDEO" >"$LOG_DIR/last-video-node.txt"
 printf "X1301_MEDIA='%s'\nX1301_SUBDEV='%s'\nX1301_VIDEO='%s'\nX1301_WIDTH='%s'\nX1301_HEIGHT='%s'\nX1301_PIXELFORMAT='RGB3'\n" "$MEDIA" "$SUBDEV" "$VIDEO" "$WIDTH" "$HEIGHT" >"$LOG_DIR/last-mode.env"
 echo 'X1301_STATUS=CONFIGURED'
