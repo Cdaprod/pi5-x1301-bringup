@@ -55,3 +55,5 @@ service-logs:
 	journalctl -u x1301-hdmi-watch.service -f
 service-uninstall:
 	sudo ./tools/x1301/install-service.sh --uninstall
+diagnose:
+	./tools/x1301/diagnose.sh
