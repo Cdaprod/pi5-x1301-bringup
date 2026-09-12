@@ -37,7 +37,8 @@ emit_event() {
   else printf 'X1301 EVENT %s mode=%s generation=%s configured=%s%s\n' "$event" "${MODE_ID:-none}" "$MODE_GENERATION" "$CONFIGURED" "${ERROR:+ error=$ERROR}"; fi
 }
 STATE_FILE="$(choose_state_file)"; CONFIGURE_COMMAND="${X1301_CONFIGURE_COMMAND:-$DIR/configure.sh}"
-running=1; sleep_pid=""; previous_observed=""; previous_identity=""; configured_identity=""; LAST_CHANGE="$(date -Is)"; MODE_GENERATION=0; next_retry=0; polls=0
+saved_generation="$(sed -nE "s/^X1301_MODE_GENERATION='?([0-9]+)'?$/\1/p" "$STATE_FILE" 2>/dev/null | head -1)"
+running=1; sleep_pid=""; previous_observed=""; previous_identity=""; configured_identity=""; LAST_CHANGE="$(date -Is)"; MODE_GENERATION="${saved_generation:-0}"; next_retry=0; polls=0
 trap 'running=0; [[ -n $sleep_pid ]] && kill "$sleep_pid" 2>/dev/null || true' INT TERM
 while ((running)); do
   SIGNAL_STATE=ERROR; MEDIA=""; SUBDEV=""; VIDEO=""; WIDTH=""; HEIGHT=""; FPS=""; PIXELCLOCK_HZ=""; PIXELFORMAT=RGB3; MODE_ID=""; CONFIGURED=0

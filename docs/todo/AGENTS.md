@@ -1,5 +1,9 @@
 # X1301 task ledger
 
+- [x] Add the persistent appliance reconciler, canonical schema-2 JSON source object, stable registry, generated profiles, semantic ALSA discovery/validation, capability probe, port registry, and quality guardrails.
+- [x] Add a single-producer FFmpeg/MediaMTX streaming layer, persistent browser surface, read-only API, administrative CLI, pinned MediaMTX installer, and layered systemd services.
+- [x] Add hardware-free tests for identities, ALSA renumbering, profiles, ports/conflicts, EDID resolution, capability selection, degradation, and generated configuration.
+- [ ] Hardware-validate the schema-2 appliance and WebRTC/HLS/RTSP fanout with MediaMTX 1.21.0 on Raspberry Pi 5/X1301/Nikon Z7.
 - [x] Implement the ordered one-shot EDID boot initialization and production hot-plug watcher lifecycle.
 - [x] Publish full timing/node identity, configuration progress, hardware indicators, generation, and errors through atomic schema-1 state and JSON.
 - [x] Cover disconnected boot, late lock, reconnect, node renumbering, resolution/frame-rate changes, retry, atomic writes, unit ordering, and installer lifecycle without hardware.

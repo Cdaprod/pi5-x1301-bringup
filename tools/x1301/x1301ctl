@@ -1,0 +1,35 @@
+#!/usr/bin/env python3
+"""Local X1301 administrator CLI. Example: x1301ctl status --json"""
+import argparse, json, os, subprocess, sys
+from pathlib import Path
+from x1301lib import read_json
+RUN=Path(os.environ.get("X1301_RUN","/run/x1301")); VAR=Path(os.environ.get("X1301_VAR","/var/lib/x1301"))
+def dump(value): print(json.dumps(value,indent=2,sort_keys=True))
+def main():
+    p=argparse.ArgumentParser(); sub=p.add_subparsers(dest="command",required=True)
+    s=sub.add_parser("status"); s.add_argument("--json",action="store_true")
+    for n in ("devices","profiles","ports","capabilities","url","diagnose","configure"): sub.add_parser(n)
+    st=sub.add_parser("stream"); st.add_argument("action",choices=("status","restart"))
+    au=sub.add_parser("audio"); au.add_argument("action",choices=("status","test"))
+    a=p.parse_args(); state=read_json(RUN/"runtime.json",{})
+    if a.command=="status":
+        if a.json: dump(state); return 0
+        src=state.get("source",{}); ident=src.get("identity",{}); sig=src.get("signal",{}); video=src.get("video",{}); audio=src.get("audio",{}); stream=state.get("stream",{})
+        print(f"X1301\n-----\nSource: {ident.get('alias') or '-'} ({ident.get('device_id') or '-'})\nHDMI: {sig.get('state','UNKNOWN')} {video.get('width') or '-'}x{video.get('height') or '-'} @ {video.get('source_fps') or '-'} RGB3\nAudio: {'Present' if audio.get('present') else 'Missing'} {audio.get('sample_rate') or '-'} Hz {audio.get('channels') or '-'} ch\nCapture: {video.get('device') or '-'} {video.get('capture_fps') or '-'} fps\nStreaming: {stream.get('encoder') or '-'} / {stream.get('transport') or '-'}\nBrowser: {state.get('urls',{}).get('web','-')}\nRTSP: {state.get('urls',{}).get('rtsp','-')}\nLast error: {state.get('last_error') or '-'}"); return 0
+    if a.command=="devices": dump(read_json(VAR/"devices.json",{}))
+    elif a.command=="profiles": dump([read_json(x,{}) for x in sorted((VAR/"profiles.d").glob("*.json"))])
+    elif a.command=="ports": dump(read_json(VAR/"ports.json",{}))
+    elif a.command=="capabilities": dump(read_json(VAR/"capabilities.json",{}))
+    elif a.command=="url": print(state.get("urls",{}).get("web",""))
+    elif a.command=="configure": return subprocess.call(["/usr/local/lib/x1301/configure.sh"])
+    elif a.command=="diagnose": return subprocess.call(["/usr/local/lib/x1301/diagnose.sh"])
+    elif a.command=="stream":
+        if a.action=="restart": return subprocess.call(["systemctl","restart","x1301-stream.service"])
+        dump(state.get("stream",{}))
+    elif a.command=="audio":
+        audio=state.get("source",{}).get("audio",{}); dump(audio)
+        if a.action=="test":
+            if not audio.get("pcm"): return 3
+            return subprocess.call(["arecord","-D",audio["pcm"],"-d","2","-f",audio.get("format") or "S16_LE","/dev/null"])
+    return 0
+if __name__=="__main__": sys.exit(main())

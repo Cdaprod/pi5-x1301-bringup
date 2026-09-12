@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "bind": "0.0.0.0",
+  "default_edid_profile": "1080p60-safe",
+  "ports": {
+    "control_http": 8080,
+    "webrtc_http": 8889,
+    "hls_http": 8888,
+    "rtsp": 8554
+  }
+}

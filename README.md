@@ -1,6 +1,69 @@
-# Pi 5 X1301 Bring-up
+# Pi 5 X1301 Media Appliance
 
-Device-discovering tools for the Geekworm X1301 / TC358743 on Raspberry Pi 5. Install dependencies with `sudo apt install v4l-utils media-ctl ffmpeg edid-decode`.
+An offline, persistent Geekworm X1301 / TC358743 appliance for Raspberry Pi 5.
+It retains the proven dynamic RP1-CFE bring-up sequence and adds remembered
+sources, HDMI audio, one-producer browser/LAN streaming, a status API, and a CLI.
+
+## Install or update
+
+```bash
+sudo apt install v4l-utils media-ctl ffmpeg edid-decode alsa-utils curl
+sudo ./tools/x1301/install-mediamtx.sh       # pinned 1.21.0 arm64 binary
+sudo ./tools/x1301/install-service.sh --enable --start
+x1301ctl status
+```
+
+Installation is idempotent. It preserves `/etc/x1301/config.json`, generated
+profiles, aliases, device history, and port assignments. Uninstall units and
+application code with `sudo ./tools/x1301/install-service.sh --uninstall`;
+persistent configuration/state is intentionally retained.
+
+The default generated ports are control HTTP `8080`, HLS `8888`, WebRTC HTTP
+`8889`, and RTSP `8554`. The registry checks first assignment for conflicts,
+records replacements, and reuses the result on reboot. Run `x1301ctl url` for
+the actual viewer URL; `/api/v1/status`, `/devices`, `/profiles`, `/ports`,
+`/capabilities`, and `/stream` are read-only LAN APIs under `/api/v1/`.
+
+## Services and storage
+
+* `x1301-edid`: loads the installed safe EDID using bounded device polling.
+* `x1301-hdmi-watch`: sole root-owned signal/graph authority and STREAMON test.
+* `x1301-appliance`: source identity, profiles, ALSA/capability probes, ports,
+  derived MediaMTX configuration, and atomic runtime state.
+* `x1301-mediamtx`: WebRTC/HLS/RTSP fanout for the single encoded producer.
+* `x1301-stream`: native FFmpeg capture/audio mux and one encoder process.
+* `x1301-web`: persistent self-hosted viewer and read-only API; it starts even
+  when HDMI is disconnected.
+
+Administrator defaults and overrides live in `/etc/x1301/`; generated durable
+state lives in `/var/lib/x1301/` (`devices.json`, `profiles.d`, `ports.json`,
+`capabilities.json`, `last-runtime.json`); ephemeral state lives in
+`/run/x1301/` (`state.env`, `runtime.json`, `generated/mediamtx.yml`). JSON is
+written by fsync and atomic rename. The schema-1 shell environment remains for
+EVF compatibility; canonical JSON uses schema 2 and labels source, capture, and
+stream FPS separately.
+
+## Operation
+
+```bash
+x1301ctl status --json
+x1301ctl devices; x1301ctl profiles; x1301ctl ports
+x1301ctl capabilities; x1301ctl stream status
+x1301ctl audio status; x1301ctl audio test
+x1301ctl diagnose
+xdg-open "$(x1301ctl url)"                 # from the Pi desktop
+```
+
+Use the displayed URL from a phone/computer on the same trusted LAN. The API
+has no authentication or mutation endpoints and should not be exposed directly
+to the Internet. OBS can open the generated RTSP URL shown by `x1301ctl status`.
+Profiles may retain additional enabled RTSP/UDP destinations in `stream.outputs`;
+no destination address is invented by the appliance.
+
+On unplug, the producer exits/retries while the web surface remains available.
+The watcher records `DISCONNECTED` or `PRESENT_NO_SIGNAL`. A timing lock or mode
+change increments generation, safely rebuilds the graph, validates a real RGB
+frame, and lets the single producer reconnect under the same remembered source.
 
 ## Overlay (independent, one-time stage)
 
@@ -57,4 +120,4 @@ At boot, `x1301-edid.service` validates and loads the canonical EDID once after 
 
 The atomic `/run/x1301/state.env` contract exposes power, timing lock, audio, full mode identity/generation, discovered graph nodes/driver, configuration readiness, and errors. No undocumented onboard LED GPIO is driven; onboard HDMI/video LEDs may be hardware-controlled.
 
-See [service lifecycle](docs/SERVICE.md), [pipeline architecture](docs/PIPELINE.md), [troubleshooting](docs/TROUBLESHOOTING.md), [EVF integration](docs/EVF_INTEGRATION.md), and [EDID notes](tools/x1301/edid/README.md).
+See [media appliance architecture](docs/MEDIA_PIPELINE.md), [service lifecycle](docs/SERVICE.md), [pipeline architecture](docs/PIPELINE.md), [troubleshooting](docs/TROUBLESHOOTING.md), [EVF integration](docs/EVF_INTEGRATION.md), and [EDID notes](tools/x1301/edid/README.md).

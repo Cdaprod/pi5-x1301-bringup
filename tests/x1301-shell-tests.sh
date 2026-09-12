@@ -37,7 +37,7 @@ fi
 exit 0
 STUB
 chmod +x "$TMP/bin/"*
-export PATH="$TMP/bin:$PATH" X1301_DEV_ROOT="$TMP/dev" X1301_LOG_DIR="$TMP/log"
+export PATH="$TMP/bin:$PATH" X1301_DEV_ROOT="$TMP/dev" X1301_LOG_DIR="$TMP/log" X1301_RUNTIME_STATE="$TMP/runtime-state.env"
 source "$ROOT/tools/x1301/common.sh"
 [[ $(find_rp1_cfe_media) == "$TMP/dev/media1" ]]
 [[ $(find_tc358743_subdev "$TMP/dev/media1") == "$TMP/dev/v4l-subdev9" ]]

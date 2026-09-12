@@ -1,0 +1,16 @@
+[Unit]
+Description=X1301 MediaMTX single-producer fanout
+After=network.target x1301-appliance.service
+ConditionPathExists=/usr/local/bin/mediamtx
+
+[Service]
+User=x1301
+Group=x1301
+SupplementaryGroups=video audio
+ExecStartPre=/usr/bin/test -s /run/x1301/generated/mediamtx.yml
+ExecStart=/usr/local/bin/mediamtx /run/x1301/generated/mediamtx.yml
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
