@@ -1,7 +1,7 @@
 [Unit]
 Description=X1301 profile, capability, and runtime reconciler
 After=x1301-appliance-init.service
-Requires=x1301-appliance-init.service
+Wants=x1301-appliance-init.service
 
 [Service]
 Type=simple

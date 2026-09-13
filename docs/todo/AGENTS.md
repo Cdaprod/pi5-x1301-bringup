@@ -1,5 +1,7 @@
 # X1301 task ledger
 
+- [x] Make canonical runtime JSON world-readable, make x1301ctl ignore ambient path overrides, and report missing/unreadable state instead of silently displaying empty values.
+- [x] Reject empty CEC OSD names as source fingerprints and allow the status reconciler to start even if optional bootstrap probing fails.
 - [x] Separate adapter/source/runtime identities, remove ALSA from identity hashes, and preserve a source slot when HDMI metadata is unavailable.
 - [x] Cache kernel/FFmpeg/topology capability results, runtime-initialize encoder candidates, and fall back across validated encoders.
 - [x] Make MediaMTX generation deterministic/change-driven, add bootstrap readiness, revalidate persisted ports, and merge atomic FFmpeg stream/capture telemetry.

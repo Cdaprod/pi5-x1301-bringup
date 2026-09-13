@@ -13,7 +13,7 @@ class ApplianceTests(unittest.TestCase):
     def setUp(self): self.tmp=tempfile.TemporaryDirectory(); self.root=Path(self.tmp.name)
     def tearDown(self): self.tmp.cleanup()
     def test_atomic_json(self):
-        p=self.root/"a"/"state.json"; atomic_json(p,{"state":"DISCONNECTED"}); self.assertEqual(read_json(p,{})["state"],"DISCONNECTED"); self.assertFalse(list(p.parent.glob(".*.tmp")))
+        p=self.root/"a"/"state.json"; atomic_json(p,{"state":"DISCONNECTED"}); self.assertEqual(read_json(p,{})["state"],"DISCONNECTED"); self.assertFalse(list(p.parent.glob(".*.tmp"))); self.assertEqual(p.stat().st_mode & 0o777,0o644)
     def test_states_from_env(self):
         p=self.root/"state.env"; p.write_text("X1301_SIGNAL_STATE='PRESENT_NO_SIGNAL'\nX1301_POWER_PRESENT='1'\n"); self.assertEqual(parse_env(p)["signal_state"],"PRESENT_NO_SIGNAL")
     def test_stable_identity_ignores_nodes(self):
@@ -29,6 +29,7 @@ class ApplianceTests(unittest.TestCase):
         first=parse_cec_source("logical address: 1\nVendor ID: 0x123456\nOSD Name: Nikon Z7\nDevice Type: Playback\n")
         second=parse_cec_source("logical address: 7\nVendor ID: 0x123456\nOSD Name: Nikon Z7\nDevice Type: Playback\n")
         self.assertEqual(first,second); self.assertEqual(cec_fingerprint(first),cec_fingerprint(second))
+        self.assertEqual(parse_cec_source("OSD Name: ''\n"),{}); self.assertIsNone(cec_fingerprint({"device_type":"Playback"}))
     def test_adapter_and_source_identity_are_separate(self):
         identity={"driver":"rp1-cfe","bridge":"tc358743","media_topology":"graph"}; aid=adapter_id(identity)
         self.assertEqual(source_id(aid),source_id(aid)); self.assertNotEqual(source_id(aid,"nikon"),source_id(aid,"laptop"))
@@ -87,5 +88,14 @@ class ApplianceTests(unittest.TestCase):
             if old is None: stream.os.environ.pop("X1301_VAR",None)
             else: stream.os.environ["X1301_VAR"]=old
     def test_urls_use_hostname(self): self.assertIn("pi5.local",urls("pi5",DEFAULT_PORTS,"camera")["webrtc"])
+    def test_cli_uses_canonical_runtime_not_ambient_override(self):
+        run=self.root/"run"; wrong=self.root/"wrong"; atomic_json(run/"runtime.json",{"urls":{"web":"http://pi.local:8080/"},"source":{},"stream":{}}); wrong.mkdir()
+        command=[str(Path(__file__).parents[1]/"tools/x1301/x1301ctl"),"--runtime-dir",str(run),"url"]
+        result=subprocess.run(command,text=True,capture_output=True,env={**os.environ,"X1301_RUN":str(wrong)})
+        self.assertEqual(result.returncode,0); self.assertEqual(result.stdout.strip(),"http://pi.local:8080/")
+    def test_cli_reports_unreadable_or_missing_runtime(self):
+        command=[str(Path(__file__).parents[1]/"tools/x1301/x1301ctl"),"--runtime-dir",str(self.root/"missing"),"status","--json"]
+        result=subprocess.run(command,text=True,capture_output=True)
+        self.assertEqual(result.returncode,2); self.assertIn("cannot read X1301 state",result.stderr)
 
 if __name__ == "__main__": unittest.main()

@@ -18,7 +18,8 @@ def run_text(args):
 def source_metadata(previous, generation):
     identity = previous.get("source", {}).get("identity", {})
     if identity.get("observed_generation") == generation:
-        return identity.get("source_metadata", {}), identity.get("source_fingerprint")
+        metadata = {key: value for key, value in identity.get("source_metadata", {}).items() if str(value).strip("'\" ")}
+        return metadata, cec_fingerprint(metadata)
     for node in sorted(Path("/dev").glob("cec*")):
         metadata = parse_cec_source(run_text(["cec-ctl", "-d", str(node), "--show-topology"]))
         if metadata: return metadata, cec_fingerprint(metadata)

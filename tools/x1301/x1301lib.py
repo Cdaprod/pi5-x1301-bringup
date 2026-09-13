@@ -21,6 +21,7 @@ def atomic_json(path: Path, value: Any) -> None:
     try:
         with os.fdopen(fd, "w") as stream:
             json.dump(value, stream, indent=2, sort_keys=True); stream.write("\n"); stream.flush(); os.fsync(stream.fileno())
+        os.chmod(tmp, 0o644)
         os.replace(tmp, path)
     finally:
         if os.path.exists(tmp): os.unlink(tmp)
@@ -91,11 +92,14 @@ def parse_cec_source(text: str) -> dict[str, str]:
     aliases = {"vendor id": "vendor_id", "osd name": "osd_name", "device type": "device_type", "language": "language"}
     for label, key in aliases.items():
         match = re.search(rf"^\s*{re.escape(label)}\s*:\s*(.+?)\s*$", text, re.I | re.M)
-        if match and match.group(1).lower() not in ("unknown", "n/a"): fields[key] = match.group(1).strip()
+        if match:
+            value = match.group(1).strip().strip("'\"").strip()
+            if value and value.lower() not in ("unknown", "n/a", "none"): fields[key] = value
     return fields
 
 def cec_fingerprint(metadata: dict[str, str]) -> str | None:
-    return stable_id("hdmi", [metadata[k] for k in sorted(metadata)]) if metadata else None
+    identifying = {key: value for key, value in metadata.items() if key in ("vendor_id", "osd_name", "language") and value}
+    return stable_id("hdmi", [identifying[k] for k in sorted(identifying)]) if identifying else None
 
 def _alsa_values(text: str, key: str) -> list[str]:
     match = re.search(rf"^{key}:\s*(.+)$", text, re.M)

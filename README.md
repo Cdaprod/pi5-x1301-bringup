@@ -58,6 +58,12 @@ x1301ctl diagnose
 xdg-open "$(x1301ctl url)"                 # from the Pi desktop
 ```
 
+`x1301ctl` always reads canonical `/run/x1301` and `/var/lib/x1301` paths; it
+does not accept ambient `X1301_RUN` overrides. Tests and recovery tooling may
+use explicit `--runtime-dir` and `--state-dir` options. Missing, unreadable, or
+invalid runtime state is reported as an error with exit status 2 rather than an
+empty status display.
+
 Use the displayed URL from a phone/computer on the same trusted LAN. The API
 has no authentication or mutation endpoints and should not be exposed directly
 to the Internet. OBS can open the generated RTSP URL shown by `x1301ctl status`.
