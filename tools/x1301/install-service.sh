@@ -8,22 +8,40 @@ while (($#)); do case "$1" in --enable) enable=1;; --start) start=1;; --restart)
 ((uninstall && (enable || start || restart))) && { echo 'ERROR: --uninstall cannot be combined with lifecycle options' >&2; exit 1; }
 [[ $EUID -eq 0 || ${X1301_ALLOW_NONROOT:-0} == 1 ]] || { echo 'ERROR: run with sudo' >&2; exit 1; }
 command -v systemctl >/dev/null || { echo 'ERROR: systemctl not found' >&2; exit 2; }
-PREFIX=${X1301_INSTALL_ROOT:-}; DEST="$PREFIX/usr/local/lib/x1301"; UNIT_DIR="$PREFIX/etc/systemd/system"
-units=(x1301-edid.service x1301-hdmi-watch.service)
+PREFIX=${X1301_INSTALL_ROOT:-}; DEST="$PREFIX/usr/local/lib/x1301"; BIN_DIR="$PREFIX/usr/local/bin"; UNIT_DIR="$PREFIX/etc/systemd/system"
+units=(x1301-edid.service x1301-hdmi-watch.service x1301-appliance-init.service x1301-appliance.service x1301-mediamtx.service x1301-stream.service x1301-web.service)
 if ((uninstall)); then
-  systemctl stop x1301-hdmi-watch.service x1301-edid.service 2>/dev/null || true
-  systemctl disable x1301-hdmi-watch.service x1301-edid.service 2>/dev/null || true
-  rm -f "$UNIT_DIR/x1301-hdmi-watch.service" "$UNIT_DIR/x1301-edid.service"; rm -rf "$DEST"
+  systemctl stop "${units[@]}" 2>/dev/null || true
+  systemctl disable "${units[@]}" 2>/dev/null || true
+  rm -f "${units[@]/#/$UNIT_DIR/}" "$BIN_DIR/x1301ctl"; rm -rf "$DEST"
   systemctl daemon-reload; systemctl reset-failed "${units[@]}" 2>/dev/null || true
   echo 'X1301 services uninstalled.'; exit 0
 fi
-install -d -m755 "$DEST" "$DEST/edid" "$UNIT_DIR"
-for script in common.sh hdmi-watch.sh hdmi-status.sh runtime-status.sh configure.sh load-edid.sh validate-edid.sh edid-init.sh; do install -m755 "$DIR/$script" "$DEST/$script"; done
+install -d -m0755 "$DEST" "$DEST/edid" "$DEST/web" "$BIN_DIR" "$UNIT_DIR"
+if [[ -z $PREFIX ]]; then
+  getent group x1301 >/dev/null || groupadd --system x1301
+  id x1301 >/dev/null 2>&1 || useradd --system --gid x1301 --home-dir /var/lib/x1301 --shell /usr/sbin/nologin x1301
+  usermod -a -G video,audio x1301
+  install -d -o root -g root -m0755 /etc/x1301 /etc/x1301/profiles.d
+  install -d -o x1301 -g x1301 -m0755 /var/lib/x1301 /var/lib/x1301/profiles.d /var/lib/x1301/generated /run/x1301 /run/x1301/generated
+  chown -R x1301:x1301 /var/lib/x1301 /run/x1301
+else
+  install -d -m0755 "$PREFIX/etc/x1301" "$PREFIX/etc/x1301/profiles.d" "$PREFIX/var/lib/x1301" "$PREFIX/var/lib/x1301/profiles.d" "$PREFIX/var/lib/x1301/generated" "$PREFIX/run/x1301" "$PREFIX/run/x1301/generated"
+fi
+for script in common.sh hdmi-watch.sh hdmi-status.sh runtime-status.sh configure.sh load-edid.sh validate-edid.sh edid-init.sh diagnose.sh verify-permissions.sh x1301-stream.py x1301ctl x1301-appliance.py x1301-web.py; do install -m755 "$DIR/$script" "$DEST/$script"; done
+install -m644 "$DIR/x1301lib.py" "$DEST/x1301lib.py"; install -m644 "$DIR/web/"* "$DEST/web/"
+ln -sfn /usr/local/lib/x1301/x1301ctl "$BIN_DIR/x1301ctl"
 install -m644 "$DIR/edid/x1301-compatible.txt" "$DEST/edid/x1301-compatible.txt"
 ln -sfn edid/x1301-compatible.txt "$DEST/1080P60EDID.txt"
+[[ -e "$PREFIX/etc/x1301/config.json" ]] || install -m644 "$ROOT/config/config.json" "$PREFIX/etc/x1301/config.json"
 for unit in "${units[@]}"; do install -m644 "$ROOT/systemd/$unit" "$UNIT_DIR/$unit"; done
+[[ -r "$DEST/edid/x1301-compatible.txt" ]] || { echo 'ERROR: installed EDID missing' >&2; exit 3; }
+if ! "$DEST/verify-permissions.sh" --quiet; then
+  echo 'ERROR: X1301 mutable storage verification failed; services were not started' >&2
+  exit 4
+fi
 systemctl daemon-reload
-((enable)) && systemctl enable x1301-edid.service x1301-hdmi-watch.service
-if ((start)); then systemctl restart x1301-edid.service x1301-hdmi-watch.service
-elif ((restart)); then systemctl restart x1301-edid.service x1301-hdmi-watch.service; fi
+((enable)) && systemctl enable "${units[@]}"
+if ((start)); then systemctl restart "${units[@]}"
+elif ((restart)); then systemctl restart "${units[@]}"; fi
 echo 'X1301 services installed.'; ((enable)) || echo 'Services not enabled.'; ((start || restart)) || echo 'Services not started.'

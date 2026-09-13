@@ -1,0 +1,14 @@
+[Unit]
+Description=X1301 persistent viewer and read-only API
+After=x1301-appliance.service network.target
+Requires=x1301-appliance.service
+
+[Service]
+User=x1301
+Group=x1301
+ExecStart=/usr/local/lib/x1301/x1301-web.py
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

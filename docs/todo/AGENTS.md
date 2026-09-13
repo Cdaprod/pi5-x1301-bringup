@@ -1,5 +1,18 @@
 # X1301 task ledger
 
+- [x] Fix the root-watcher/systemd StateDirectory ownership race by assigning persistent/runtime lifecycle ownership to appliance-init only.
+- [x] Create mutable directories with explicit x1301 ownership and make installation prove create/rename/delete access as the effective service user without deleting persisted state.
+- [x] Add x1301ctl permissions diagnostics plus installer regressions for probe failure, modes, preserved profiles/devices/ports, generated directories, and unit ownership ordering.
+- [x] Make canonical runtime JSON world-readable, make x1301ctl ignore ambient path overrides, and report missing/unreadable state instead of silently displaying empty values.
+- [x] Reject empty CEC OSD names as source fingerprints and allow the status reconciler to start even if optional bootstrap probing fails.
+- [x] Separate adapter/source/runtime identities, remove ALSA from identity hashes, and preserve a source slot when HDMI metadata is unavailable.
+- [x] Cache kernel/FFmpeg/topology capability results, runtime-initialize encoder candidates, and fall back across validated encoders.
+- [x] Make MediaMTX generation deterministic/change-driven, add bootstrap readiness, revalidate persisted ports, and merge atomic FFmpeg stream/capture telemetry.
+- [x] Parse ALSA sets/ranges into compatible raw and plughw capture settings without repeated hardware-parameter probes.
+- [x] Add the persistent appliance reconciler, canonical schema-2 JSON source object, stable registry, generated profiles, semantic ALSA discovery/validation, capability probe, port registry, and quality guardrails.
+- [x] Add a single-producer FFmpeg/MediaMTX streaming layer, persistent browser surface, read-only API, administrative CLI, pinned MediaMTX installer, and layered systemd services.
+- [x] Add hardware-free tests for identities, ALSA renumbering, profiles, ports/conflicts, EDID resolution, capability selection, degradation, and generated configuration.
+- [ ] Hardware-validate the schema-2 appliance and WebRTC/HLS/RTSP fanout with MediaMTX 1.21.0 on Raspberry Pi 5/X1301/Nikon Z7.
 - [x] Implement the ordered one-shot EDID boot initialization and production hot-plug watcher lifecycle.
 - [x] Publish full timing/node identity, configuration progress, hardware indicators, generation, and errors through atomic schema-1 state and JSON.
 - [x] Cover disconnected boot, late lock, reconnect, node renumbering, resolution/frame-rate changes, retry, atomic writes, unit ordering, and installer lifecycle without hardware.

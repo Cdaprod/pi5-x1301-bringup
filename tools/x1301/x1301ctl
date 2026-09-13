@@ -1,0 +1,52 @@
+#!/usr/bin/env python3
+"""Local X1301 administrator CLI. Example: x1301ctl status --json"""
+import argparse, json, os, subprocess, sys
+from pathlib import Path
+from x1301lib import read_json
+def dump(value): print(json.dumps(value,indent=2,sort_keys=True))
+def required_json(path):
+    try:
+        with path.open() as stream: return json.load(stream)
+    except OSError as exc:
+        print(f"ERROR: cannot read X1301 state {path}: {exc}",file=sys.stderr); return None
+    except ValueError as exc:
+        print(f"ERROR: invalid X1301 state {path}: {exc}",file=sys.stderr); return None
+def main():
+    p=argparse.ArgumentParser(); p.add_argument("--runtime-dir",type=Path,default=Path("/run/x1301"),help="explicit runtime directory (default: /run/x1301)"); p.add_argument("--state-dir",type=Path,default=Path("/var/lib/x1301"),help="explicit persistent state directory (default: /var/lib/x1301)"); sub=p.add_subparsers(dest="command",required=True)
+    s=sub.add_parser("status"); s.add_argument("--json",action="store_true")
+    for n in ("devices","profiles","ports","url","diagnose","permissions","configure"): sub.add_parser(n)
+    capabilities=sub.add_parser("capabilities"); capabilities.add_argument("--rescan",action="store_true")
+    st=sub.add_parser("stream"); st.add_argument("action",choices=("status","restart"))
+    au=sub.add_parser("audio"); au.add_argument("action",choices=("status","test"))
+    a=p.parse_args(); run=a.runtime_dir; var=a.state_dir
+    needs_runtime = a.command in ("status", "url", "stream", "audio")
+    state = required_json(run/"runtime.json") if needs_runtime else read_json(run/"runtime.json", {})
+    if needs_runtime and state is None: return 2
+    if a.command=="status":
+        if a.json: dump(state); return 0
+        src=state.get("source",{}); ident=src.get("identity",{}); sig=src.get("signal",{}); video=src.get("video",{}); audio=src.get("audio",{}); stream=state.get("stream",{})
+        print(f"X1301\n-----\nSource: {ident.get('alias') or '-'} ({ident.get('device_id') or '-'})\nHDMI: {sig.get('state','UNKNOWN')} {video.get('width') or '-'}x{video.get('height') or '-'} @ {video.get('source_fps') or '-'} RGB3\nAudio: {'Present' if audio.get('present') else 'Missing'} {audio.get('sample_rate') or '-'} Hz {audio.get('channels') or '-'} ch\nCapture: {video.get('device') or '-'} {video.get('capture_fps') or '-'} fps\nStreaming: {stream.get('encoder') or '-'} / {stream.get('transport') or '-'}\nBrowser: {state.get('urls',{}).get('web','-')}\nRTSP: {state.get('urls',{}).get('rtsp','-')}\nLast error: {state.get('last_error') or '-'}"); return 0
+    if a.command=="devices": dump(read_json(var/"devices.json",{}))
+    elif a.command=="profiles": dump([read_json(x,{}) for x in sorted((var/"profiles.d").glob("*.json"))])
+    elif a.command=="ports": dump(read_json(var/"ports.json",{}))
+    elif a.command=="capabilities":
+        if a.rescan:
+            command=["/usr/local/lib/x1301/x1301-appliance.py","--once","--rescan"]
+            if os.geteuid()==0: command=["runuser","-u","x1301","--",*command]
+            rc=subprocess.call(command)
+            if rc: return rc
+        dump(read_json(var/"capabilities.json",{}))
+    elif a.command=="url": print(state.get("urls",{}).get("web",""))
+    elif a.command=="configure": return subprocess.call(["/usr/local/lib/x1301/configure.sh"])
+    elif a.command=="diagnose": return subprocess.call(["/usr/local/lib/x1301/diagnose.sh"])
+    elif a.command=="permissions": return subprocess.call(["/usr/local/lib/x1301/verify-permissions.sh"])
+    elif a.command=="stream":
+        if a.action=="restart": return subprocess.call(["systemctl","restart","x1301-stream.service"])
+        dump(state.get("stream",{}))
+    elif a.command=="audio":
+        audio=state.get("source",{}).get("audio",{}); dump(audio)
+        if a.action=="test":
+            if not audio.get("pcm"): return 3
+            return subprocess.call(["arecord","-D",audio["pcm"],"-d","2","-f",audio.get("format") or "S16_LE","/dev/null"])
+    return 0
+if __name__=="__main__": sys.exit(main())

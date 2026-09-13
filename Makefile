@@ -32,6 +32,7 @@ capture:
 watch:
 	./tools/x1301/hdmi-watch.sh
 test:
+	python3 -m unittest -v tests/test_appliance.py
 	./tests/test-common.sh
 	./tests/test-status-parser.sh
 	./tests/test-watcher-service.sh

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Load an EDID explicitly. Usage: load-edid.sh [--file PATH]
-# Example: sudo ./tools/x1301/load-edid.sh --file tools/x1301/edid/x1301-compatible.txt
+# Load a bundled logical EDID profile. Usage: load-edid.sh [--profile ID|--file PATH]
+# Example: sudo ./tools/x1301/load-edid.sh --profile 1080p60-safe
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"; source "$DIR/common.sh"
 EDID="$DIR/edid/x1301-compatible.txt"
-while (($#)); do case "$1" in --file) (($# >= 2)) || { echo 'ERROR: --file needs a path' >&2; exit 1; }; EDID=$2; shift;; -h|--help) sed -n '2,3p' "$0"; exit 0;; *) echo "ERROR: unknown option: $1" >&2; exit 1;; esac; shift; done
+while (($#)); do case "$1" in --profile) (($# >= 2)) || { echo 'ERROR: --profile needs an ID' >&2; exit 1; }; case "$2" in 1080p60-safe|x1301-compatible) EDID="$DIR/edid/x1301-compatible.txt";; *) echo "ERROR: unknown EDID profile: $2" >&2; exit 2;; esac; shift;; --file) (($# >= 2)) || { echo 'ERROR: --file needs a path' >&2; exit 1; }; EDID=$2; shift;; -h|--help) sed -n '2,3p' "$0"; exit 0;; *) echo "ERROR: unknown option: $1" >&2; exit 1;; esac; shift; done
 [[ -r "$EDID" ]] || { echo "ERROR: EDID not readable: $EDID" >&2; exit 2; }
 need media-ctl; need v4l2-ctl
 [[ $EUID -eq 0 || ${X1301_ALLOW_NONROOT:-0} == 1 ]] || { echo 'ERROR: run with sudo' >&2; exit 1; }
