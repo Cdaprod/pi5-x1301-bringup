@@ -31,7 +31,9 @@ the actual viewer URL; `/api/v1/status`, `/devices`, `/profiles`, `/ports`,
 * `x1301-appliance`: source identity, profiles, ALSA/capability probes, ports,
   derived MediaMTX configuration, and atomic runtime state.
 * `x1301-appliance-init`: validates persisted ports and materializes capabilities
-  and generated configuration before dependent services start.
+  and generated configuration before dependent services start. It is the sole
+  systemd `StateDirectory=x1301` lifecycle owner; the root HDMI watcher no
+  longer races it by applying root ownership to the same persistent directory.
 * `x1301-mediamtx`: WebRTC/HLS/RTSP fanout for the single encoded producer.
 * `x1301-stream`: native FFmpeg capture/audio mux and one encoder process.
 * `x1301-web`: persistent self-hosted viewer and read-only API; it starts even
@@ -63,6 +65,37 @@ does not accept ambient `X1301_RUN` overrides. Tests and recovery tooling may
 use explicit `--runtime-dir` and `--state-dir` options. Missing, unreadable, or
 invalid runtime state is reported as an error with exit status 2 rather than an
 empty status display.
+
+## Storage permission verification
+
+The installer creates administrator configuration as `root:root` and mutable
+state/runtime directories as `x1301:x1301`, preserves existing JSON and
+profiles, then performs a create → rename → delete test as the actual `x1301`
+account. Installation stops before service startup if effective access fails.
+This tests UID resolution, ACLs, mount/namespace policy, and mode bits rather
+than trusting `stat` alone. Run the same diagnostic later with:
+
+```bash
+sudo x1301ctl permissions
+stat -c '%a %U:%G %n' \
+  /var/lib/x1301 \
+  /var/lib/x1301/profiles.d \
+  /var/lib/x1301/generated \
+  /run/x1301
+
+sudo -u x1301 sh -c '
+  set -e
+  p=/var/lib/x1301/profiles.d/.x1301-write-test-$$
+  printf test > "$p"
+  mv "$p" "$p.moved"
+  rm "$p.moved"
+'
+
+systemctl cat x1301-appliance-init.service
+systemctl cat x1301-appliance.service
+x1301ctl status --json
+x1301ctl url
+```
 
 Use the displayed URL from a phone/computer on the same trusted LAN. The API
 has no authentication or mutation endpoints and should not be exposed directly

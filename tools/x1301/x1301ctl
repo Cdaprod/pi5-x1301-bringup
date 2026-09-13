@@ -14,7 +14,7 @@ def required_json(path):
 def main():
     p=argparse.ArgumentParser(); p.add_argument("--runtime-dir",type=Path,default=Path("/run/x1301"),help="explicit runtime directory (default: /run/x1301)"); p.add_argument("--state-dir",type=Path,default=Path("/var/lib/x1301"),help="explicit persistent state directory (default: /var/lib/x1301)"); sub=p.add_subparsers(dest="command",required=True)
     s=sub.add_parser("status"); s.add_argument("--json",action="store_true")
-    for n in ("devices","profiles","ports","url","diagnose","configure"): sub.add_parser(n)
+    for n in ("devices","profiles","ports","url","diagnose","permissions","configure"): sub.add_parser(n)
     capabilities=sub.add_parser("capabilities"); capabilities.add_argument("--rescan",action="store_true")
     st=sub.add_parser("stream"); st.add_argument("action",choices=("status","restart"))
     au=sub.add_parser("audio"); au.add_argument("action",choices=("status","test"))
@@ -39,6 +39,7 @@ def main():
     elif a.command=="url": print(state.get("urls",{}).get("web",""))
     elif a.command=="configure": return subprocess.call(["/usr/local/lib/x1301/configure.sh"])
     elif a.command=="diagnose": return subprocess.call(["/usr/local/lib/x1301/diagnose.sh"])
+    elif a.command=="permissions": return subprocess.call(["/usr/local/lib/x1301/verify-permissions.sh"])
     elif a.command=="stream":
         if a.action=="restart": return subprocess.call(["systemctl","restart","x1301-stream.service"])
         dump(state.get("stream",{}))
