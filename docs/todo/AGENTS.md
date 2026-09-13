@@ -1,5 +1,9 @@
 # X1301 task ledger
 
+- [x] Separate adapter/source/runtime identities, remove ALSA from identity hashes, and preserve a source slot when HDMI metadata is unavailable.
+- [x] Cache kernel/FFmpeg/topology capability results, runtime-initialize encoder candidates, and fall back across validated encoders.
+- [x] Make MediaMTX generation deterministic/change-driven, add bootstrap readiness, revalidate persisted ports, and merge atomic FFmpeg stream/capture telemetry.
+- [x] Parse ALSA sets/ranges into compatible raw and plughw capture settings without repeated hardware-parameter probes.
 - [x] Add the persistent appliance reconciler, canonical schema-2 JSON source object, stable registry, generated profiles, semantic ALSA discovery/validation, capability probe, port registry, and quality guardrails.
 - [x] Add a single-producer FFmpeg/MediaMTX streaming layer, persistent browser surface, read-only API, administrative CLI, pinned MediaMTX installer, and layered systemd services.
 - [x] Add hardware-free tests for identities, ALSA renumbering, profiles, ports/conflicts, EDID resolution, capability selection, degradation, and generated configuration.

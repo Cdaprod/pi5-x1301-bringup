@@ -26,6 +26,10 @@ export PATH="$TMP/bin:$PATH" X1301_INSTALL_ROOT="$TMP/root" X1301_ALLOW_NONROOT=
 "$ROOT/tools/x1301/install-service.sh" --enable --restart
 [[ -x "$TMP/root/usr/local/lib/x1301/hdmi-status.sh" && -L "$TMP/root/usr/local/lib/x1301/1080P60EDID.txt" ]]
 [[ -f "$TMP/root/etc/systemd/system/x1301-edid.service" && -f "$TMP/root/etc/systemd/system/x1301-hdmi-watch.service" ]]
+[[ -x "$TMP/root/usr/local/lib/x1301/x1301-stream.py" && -L "$TMP/root/usr/local/bin/x1301ctl" ]]
+[[ -f "$TMP/root/etc/systemd/system/x1301-appliance-init.service" && -f "$TMP/root/etc/systemd/system/x1301-mediamtx.service" ]]
+grep -q '^Type=oneshot$' "$ROOT/systemd/x1301-appliance-init.service"
+grep -q '^Requires=x1301-appliance-init.service$' "$ROOT/systemd/x1301-mediamtx.service"
 "$ROOT/tools/x1301/install-service.sh" --uninstall; [[ ! -e "$TMP/root/usr/local/lib/x1301" ]]
 "$ROOT/tools/x1301/install-service.sh" --uninstall
 echo 'test-service-install: PASS'

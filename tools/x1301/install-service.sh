@@ -9,7 +9,7 @@ while (($#)); do case "$1" in --enable) enable=1;; --start) start=1;; --restart)
 [[ $EUID -eq 0 || ${X1301_ALLOW_NONROOT:-0} == 1 ]] || { echo 'ERROR: run with sudo' >&2; exit 1; }
 command -v systemctl >/dev/null || { echo 'ERROR: systemctl not found' >&2; exit 2; }
 PREFIX=${X1301_INSTALL_ROOT:-}; DEST="$PREFIX/usr/local/lib/x1301"; BIN_DIR="$PREFIX/usr/local/bin"; UNIT_DIR="$PREFIX/etc/systemd/system"
-units=(x1301-edid.service x1301-hdmi-watch.service x1301-appliance.service x1301-mediamtx.service x1301-stream.service x1301-web.service)
+units=(x1301-edid.service x1301-hdmi-watch.service x1301-appliance-init.service x1301-appliance.service x1301-mediamtx.service x1301-stream.service x1301-web.service)
 if ((uninstall)); then
   systemctl stop "${units[@]}" 2>/dev/null || true
   systemctl disable "${units[@]}" 2>/dev/null || true
@@ -19,7 +19,7 @@ if ((uninstall)); then
 fi
 install -d -m755 "$DEST" "$DEST/edid" "$DEST/web" "$BIN_DIR" "$UNIT_DIR" "$PREFIX/etc/x1301/profiles.d" "$PREFIX/var/lib/x1301/profiles.d" "$PREFIX/var/lib/x1301/generated"
 if [[ -z $PREFIX ]]; then getent group x1301 >/dev/null || groupadd --system x1301; id x1301 >/dev/null 2>&1 || useradd --system --gid x1301 --home-dir /var/lib/x1301 --shell /usr/sbin/nologin x1301; usermod -a -G video,audio x1301; chown -R x1301:x1301 /var/lib/x1301; fi
-for script in common.sh hdmi-watch.sh hdmi-status.sh runtime-status.sh configure.sh load-edid.sh validate-edid.sh edid-init.sh diagnose.sh x1301-stream.sh x1301ctl x1301-appliance.py x1301-web.py; do install -m755 "$DIR/$script" "$DEST/$script"; done
+for script in common.sh hdmi-watch.sh hdmi-status.sh runtime-status.sh configure.sh load-edid.sh validate-edid.sh edid-init.sh diagnose.sh x1301-stream.py x1301ctl x1301-appliance.py x1301-web.py; do install -m755 "$DIR/$script" "$DEST/$script"; done
 install -m644 "$DIR/x1301lib.py" "$DEST/x1301lib.py"; install -m644 "$DIR/web/"* "$DEST/web/"
 ln -sfn /usr/local/lib/x1301/x1301ctl "$BIN_DIR/x1301ctl"
 install -m644 "$DIR/edid/x1301-compatible.txt" "$DEST/edid/x1301-compatible.txt"

@@ -8,7 +8,8 @@ def dump(value): print(json.dumps(value,indent=2,sort_keys=True))
 def main():
     p=argparse.ArgumentParser(); sub=p.add_subparsers(dest="command",required=True)
     s=sub.add_parser("status"); s.add_argument("--json",action="store_true")
-    for n in ("devices","profiles","ports","capabilities","url","diagnose","configure"): sub.add_parser(n)
+    for n in ("devices","profiles","ports","url","diagnose","configure"): sub.add_parser(n)
+    capabilities=sub.add_parser("capabilities"); capabilities.add_argument("--rescan",action="store_true")
     st=sub.add_parser("stream"); st.add_argument("action",choices=("status","restart"))
     au=sub.add_parser("audio"); au.add_argument("action",choices=("status","test"))
     a=p.parse_args(); state=read_json(RUN/"runtime.json",{})
@@ -19,7 +20,13 @@ def main():
     if a.command=="devices": dump(read_json(VAR/"devices.json",{}))
     elif a.command=="profiles": dump([read_json(x,{}) for x in sorted((VAR/"profiles.d").glob("*.json"))])
     elif a.command=="ports": dump(read_json(VAR/"ports.json",{}))
-    elif a.command=="capabilities": dump(read_json(VAR/"capabilities.json",{}))
+    elif a.command=="capabilities":
+        if a.rescan:
+            command=["/usr/local/lib/x1301/x1301-appliance.py","--once","--rescan"]
+            if os.geteuid()==0: command=["runuser","-u","x1301","--",*command]
+            rc=subprocess.call(command)
+            if rc: return rc
+        dump(read_json(VAR/"capabilities.json",{}))
     elif a.command=="url": print(state.get("urls",{}).get("web",""))
     elif a.command=="configure": return subprocess.call(["/usr/local/lib/x1301/configure.sh"])
     elif a.command=="diagnose": return subprocess.call(["/usr/local/lib/x1301/diagnose.sh"])

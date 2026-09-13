@@ -7,7 +7,7 @@ Wants=x1301-mediamtx.service
 User=x1301
 Group=x1301
 SupplementaryGroups=video audio
-ExecStart=/usr/local/lib/x1301/x1301-stream.sh
+ExecStart=/usr/local/lib/x1301/x1301-stream.py
 Restart=on-failure
 RestartSec=3
 

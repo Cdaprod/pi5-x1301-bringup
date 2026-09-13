@@ -19,11 +19,17 @@ live DV timings; resets and links `csi2:4 -> rp1-cfe-csi2_ch0:0`; sets pads 0/4
 to `RGB888_1X24/<live size>`; sets the capture node to `RGB3`; and requires a
 full frame from STREAMON. The other services only consume its state.
 
-`x1301-appliance` owns identities, generated profiles, ports, capabilities, and
+`x1301-appliance-init` verifies persisted ports, runtime-tests advertised
+encoders, and creates initial generated configuration. `x1301-appliance` owns identities, generated profiles, ports, capabilities, and
 canonical JSON. `x1301-stream` owns exactly one native FFmpeg producer per
 active profile. MediaMTX 1.21.0 is pinned and installed once, never at boot.
 `x1301-web` owns only static UI and read-only APIs; its iframe persists through
 signal and mode transitions.
+
+The producer writes atomic `stream.json` and `capture.json` telemetry from
+FFmpeg's progress protocol. The appliance remains the only `runtime.json`
+writer. MediaMTX configuration is deterministic and replaced only when its
+functional settings change; the stable `x1301` path survives source changes.
 
 ## Performance policy
 

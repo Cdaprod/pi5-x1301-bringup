@@ -1,0 +1,15 @@
+[Unit]
+Description=X1301 appliance state and generated configuration bootstrap
+After=x1301-hdmi-watch.service
+Requires=x1301-hdmi-watch.service
+
+[Service]
+Type=oneshot
+User=x1301
+Group=x1301
+SupplementaryGroups=video audio
+ExecStart=/usr/local/lib/x1301/x1301-appliance.py --once --bootstrap
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

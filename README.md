@@ -30,6 +30,8 @@ the actual viewer URL; `/api/v1/status`, `/devices`, `/profiles`, `/ports`,
 * `x1301-hdmi-watch`: sole root-owned signal/graph authority and STREAMON test.
 * `x1301-appliance`: source identity, profiles, ALSA/capability probes, ports,
   derived MediaMTX configuration, and atomic runtime state.
+* `x1301-appliance-init`: validates persisted ports and materializes capabilities
+  and generated configuration before dependent services start.
 * `x1301-mediamtx`: WebRTC/HLS/RTSP fanout for the single encoded producer.
 * `x1301-stream`: native FFmpeg capture/audio mux and one encoder process.
 * `x1301-web`: persistent self-hosted viewer and read-only API; it starts even
@@ -38,7 +40,8 @@ the actual viewer URL; `/api/v1/status`, `/devices`, `/profiles`, `/ports`,
 Administrator defaults and overrides live in `/etc/x1301/`; generated durable
 state lives in `/var/lib/x1301/` (`devices.json`, `profiles.d`, `ports.json`,
 `capabilities.json`, `last-runtime.json`); ephemeral state lives in
-`/run/x1301/` (`state.env`, `runtime.json`, `generated/mediamtx.yml`). JSON is
+`/run/x1301/` (`state.env`, `stream.json`, `capture.json`, `runtime.json`,
+`generated/mediamtx.yml`). JSON is
 written by fsync and atomic rename. The schema-1 shell environment remains for
 EVF compatibility; canonical JSON uses schema 2 and labels source, capture, and
 stream FPS separately.
@@ -49,6 +52,7 @@ stream FPS separately.
 x1301ctl status --json
 x1301ctl devices; x1301ctl profiles; x1301ctl ports
 x1301ctl capabilities; x1301ctl stream status
+sudo x1301ctl capabilities --rescan  # explicitly repeat encoder init probes
 x1301ctl audio status; x1301ctl audio test
 x1301ctl diagnose
 xdg-open "$(x1301ctl url)"                 # from the Pi desktop
@@ -64,6 +68,15 @@ On unplug, the producer exits/retries while the web surface remains available.
 The watcher records `DISCONNECTED` or `PRESENT_NO_SIGNAL`. A timing lock or mode
 change increments generation, safely rebuilds the graph, validates a real RGB
 frame, and lets the single producer reconnect under the same remembered source.
+
+Adapter and HDMI-source identities are separate. An explicitly discovered or
+administrator-supplied `source_fingerprint` selects a source-specific profile;
+when the receiver exposes no source metadata, a persistent fallback source slot
+is used for that adapter. ALSA availability and card numbers never affect either
+identity. Encoder wrappers are selected only after a real one-frame FFmpeg
+initialization succeeds, and the result is cached until kernel/FFmpeg/topology
+changes or an explicit rescan. FFmpeg progress is published independently and
+merged by the sole canonical runtime-state writer.
 
 ## Overlay (independent, one-time stage)
 

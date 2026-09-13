@@ -2,6 +2,7 @@
   "schema": 1,
   "bind": "0.0.0.0",
   "default_edid_profile": "1080p60-safe",
+  "source_fingerprint": null,
   "ports": {
     "control_http": 8080,
     "webrtc_http": 8889,
